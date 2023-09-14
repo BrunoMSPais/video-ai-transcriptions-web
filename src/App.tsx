@@ -1,4 +1,6 @@
 import { Github, Wand2 } from 'lucide-react'
+import { useState } from 'react'
+import { useCompletion } from 'ai/react'
 import {
 	Select,
 	SelectItem,
@@ -15,9 +17,26 @@ import { PromptSelect } from './components/prompt-select'
 import { VideoInputForm } from './components/video-input-form'
 
 export function App() {
-	function handlePromptSelected(template: string) {
-		console.log(template)
-	}
+	const [temperature, setTemperature] = useState<number>(0.5)
+	const [videoId, setVideoId] = useState<string | null>(null)
+
+	const {
+		input,
+		setInput,
+		handleInputChange,
+		handleSubmit,
+		completion,
+		isLoading,
+	} = useCompletion({
+		api: 'http://localhost:3333/ai/complete',
+		body: {
+			videoId,
+			temperature,
+		},
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	})
 
 	return (
 		<div className='min-h-screen flex flex-col'>
@@ -47,12 +66,15 @@ export function App() {
 						<Textarea
 							placeholder='Inclua o prompt para a IA...'
 							className='resize-none p-4 leading-relaxed'
+							onChange={handleInputChange}
+							value={input}
 						/>
 
 						<Textarea
 							placeholder='Resultado gerado pela IA...'
 							className='resize-none p-4 leading-relaxed'
 							readOnly
+							value={completion}
 						/>
 					</div>
 
@@ -67,13 +89,16 @@ export function App() {
 				</div>
 
 				<aside className='w-80 space-y-6'>
-					<VideoInputForm />
+					<VideoInputForm onVideoUploaded={setVideoId} />
 
-					<form className='space-y-6'>
+					<form
+						onSubmit={handleSubmit}
+						className='space-y-6'
+					>
 						<div className='space-y-2'>
 							<Label>Prompt</Label>
 
-							<PromptSelect onPromptSelected={handlePromptSelected} />
+							<PromptSelect onPromptSelected={setInput} />
 						</div>
 
 						<Separator />
@@ -107,7 +132,8 @@ export function App() {
 								min={0}
 								max={1}
 								step={0.1}
-								defaultValue={[0.5]}
+								value={[temperature]}
+								onValueChange={value => setTemperature(value[0])}
 							/>
 
 							<span className='block text-xs text-muted-foreground italic leading-relaxed'>
@@ -121,6 +147,7 @@ export function App() {
 						<Button
 							type='submit'
 							className='w-full'
+							disabled={isLoading}
 						>
 							Executar
 							<Wand2 className='w-4 h-4 ml-2' />

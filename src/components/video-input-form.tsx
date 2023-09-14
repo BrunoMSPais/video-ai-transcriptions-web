@@ -15,6 +15,10 @@ type TStatus =
 	| 'transcribing'
 	| 'success'
 
+interface VideoInputFormProps {
+	onVideoUploaded: (videoId: string) => void
+}
+
 const statusMessages = {
 	waiting: 'Carregar vídeo',
 	converting: 'Convertendo',
@@ -23,7 +27,7 @@ const statusMessages = {
 	success: 'Sucesso!',
 }
 
-export function VideoInputForm() {
+export function VideoInputForm({ onVideoUploaded }: VideoInputFormProps) {
 	const [videoFile, setVideoFile] = useState<File | null>(null)
 	const [status, setStatus] = useState<TStatus>('waiting')
 
@@ -115,6 +119,8 @@ export function VideoInputForm() {
 		await api.post(`/videos/${videoId}/transcription`, { prompt })
 
 		setStatus('success')
+
+		onVideoUploaded(videoId) // lifting state up
 	}
 
 	const previewURL = useMemo(() => {
