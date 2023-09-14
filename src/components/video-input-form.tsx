@@ -6,9 +6,27 @@ import { Separator } from './ui/separator'
 import { Textarea } from './ui/textarea'
 import { Button } from './ui/button'
 import { Label } from './ui/label'
+import { api } from '../lib/axios'
+
+type TStatus =
+	| 'waiting'
+	| 'converting'
+	| 'uploading'
+	| 'transcribing'
+	| 'success'
+
+const statusMessages = {
+	waiting: 'Carregar vídeo',
+	converting: 'Convertendo',
+	uploading: 'Enviando',
+	transcribing: 'Transcrevendo',
+	success: 'Sucesso!',
+}
 
 export function VideoInputForm() {
 	const [videoFile, setVideoFile] = useState<File | null>(null)
+	const [status, setStatus] = useState<TStatus>('waiting')
+
 	const promptInputRef = useRef<HTMLTextAreaElement>(null)
 
 	function handleFileSelected(event: ChangeEvent<HTMLInputElement>) {
@@ -76,8 +94,27 @@ export function VideoInputForm() {
 
 		if (!videoFile) return
 
+		setStatus('converting')
+
 		// convert video to audio using client
 		const audioFile = await convertVideoToAudio(videoFile)
+
+		const data = new FormData()
+		data.append('file', audioFile)
+
+		setStatus('uploading')
+
+		// upload audio file to server
+		const response = await api.post('/videos', data)
+
+		const videoId = response.data.video.id
+
+		setStatus('transcribing')
+
+		// get transcription from server
+		await api.post(`/videos/${videoId}/transcription`, { prompt })
+
+		setStatus('success')
 	}
 
 	const previewURL = useMemo(() => {
@@ -87,7 +124,10 @@ export function VideoInputForm() {
 	}, [videoFile])
 
 	return (
-		<form className='space-y-6'>
+		<form
+			onSubmit={handleUploadVideo}
+			className='space-y-6'
+		>
 			<label
 				htmlFor='video'
 				className='relative border flex rounded-md aspect-video items-center justify-center cursor-pointer border-dashed text-sm flex-col gap-2 text-muted-foreground hover:bg-primary/5'
@@ -121,16 +161,19 @@ export function VideoInputForm() {
 
 				<Textarea
 					ref={promptInputRef}
+					disabled={status !== 'waiting'}
 					id='transcription_prompt'
 					className='h-20 resize-none leading-relaxed'
 					placeholder='Inclua palavras-chave mencionadas no vídeo separadas por vírgula (,)'
 				/>
 			</div>
 			<Button
+				data-success={status === 'success'}
+				disabled={status !== 'waiting'}
 				type='submit'
-				className='w-full'
+				className='w-full data-[success=true]:bg-emerald-400'
 			>
-				Carregar vídeo
+				{statusMessages[status]}
 				<Upload className='w-4 h-4 ml-2' />
 			</Button>
 		</form>
